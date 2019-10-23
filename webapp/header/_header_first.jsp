@@ -11,11 +11,22 @@
 	</c:if>
 	<script type="text/javascript">
 function unreadCount() {
-	$.getJSON('${tenantPrefix}/rs/msg/unreadCount?_sed=' + new Date().getTime(), {}, function(data) {
-		if (data.data == 0) {
-			$('#unreadMsg').html('');
+	$.getJSON('${ctx}/msg/rs/unreadCount', {}, function(data) {
+		var count = data.data.totalCount;
+		var list = data.data.result;
+		if (count == 0) {
+			$('#msg-unread-count').hide();
 		} else {
-			$('#unreadMsg').html(data.data);
+			$('#msg-unread-count').html(count);
+			$('#msg-unread-count').show();
+			var html = '';
+			for (var i = 0; i < list.length; i++) {
+				var item = list[i];
+				html += '<li><a href="${ctx}/msg/msg-info-view.do?id=' + item.id + '">' + item.name + '</a></li>';
+			}
+			html += '<li><a href="${ctx}/msg/msg-info-listReceived.do">更多消息</a></li>';
+			$('#msg-unread-content').html(html);
+
 		}
 	});
 }

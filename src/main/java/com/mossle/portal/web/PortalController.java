@@ -8,9 +8,9 @@ import java.util.Map;
 
 import javax.annotation.Resource;
 
+import com.mossle.api.auth.CurrentUserHolder;
 import com.mossle.api.tenant.TenantHolder;
 
-import com.mossle.core.auth.CurrentUserHolder;
 import com.mossle.core.mapper.BeanMapper;
 import com.mossle.core.spring.MessageHelper;
 
@@ -153,6 +153,9 @@ public class PortalController {
     @RequestMapping("updateOrder")
     public String updateOrder(@RequestParam("ids") List<Long> ids,
             @RequestParam("priorities") List<String> priorities) {
+        logger.info("ids : {}", ids);
+        logger.info("priorities : {}", priorities);
+
         String userId = currentUserHolder.getUserId();
         PortalInfo portalInfo = this.copyOrGetPortalInfo(userId);
         int index = 0;
@@ -162,6 +165,8 @@ public class PortalController {
             String[] array = priorities.get(index).split(":");
             int columnIndex = Integer.parseInt(array[0]);
             int rowIndex = Integer.parseInt(array[1]);
+            logger.info("{} {} {} {}", portalItem.getId(),
+                    portalItem.getName(), columnIndex, rowIndex);
             portalItem.setColumnIndex(columnIndex);
             portalItem.setRowIndex(rowIndex);
             portalItemManager.save(portalItem);
@@ -238,12 +243,13 @@ public class PortalController {
     public PortalItem createOrGetPortalItem(PortalInfo portalInfo,
             Long portalItemId) {
         PortalItem portalItem = portalItemManager.get(portalItemId);
-        String hql = "from PortalItem where portalInfo=? and columnIndex=? and rowIndex=?";
-        PortalItem targetPortalItem = portalItemManager.findUnique(hql,
-                portalInfo, portalItem.getColumnIndex(),
-                portalItem.getRowIndex());
 
-        return targetPortalItem;
+        // String hql = "from PortalItem where portalInfo=? and columnIndex=? and rowIndex=?";
+        // PortalItem targetPortalItem = portalItemManager.findUnique(hql,
+        // portalInfo, portalItem.getColumnIndex(),
+        // portalItem.getRowIndex());
+        // return targetPortalItem;
+        return portalItem;
     }
 
     // ~ ======================================================================

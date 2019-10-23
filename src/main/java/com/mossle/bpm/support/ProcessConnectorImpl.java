@@ -12,8 +12,10 @@ import com.mossle.api.process.ProcessDTO;
 import com.mossle.api.user.UserConnector;
 
 import com.mossle.bpm.cmd.FindFirstTaskFormCmd;
+import com.mossle.bpm.persistence.domain.BpmConfBase;
 import com.mossle.bpm.persistence.domain.BpmConfForm;
 import com.mossle.bpm.persistence.domain.BpmProcess;
+import com.mossle.bpm.persistence.manager.BpmConfBaseManager;
 import com.mossle.bpm.persistence.manager.BpmConfFormManager;
 import com.mossle.bpm.persistence.manager.BpmProcessManager;
 
@@ -50,6 +52,7 @@ public class ProcessConnectorImpl implements ProcessConnector {
     private ProcessEngine processEngine;
     private BpmConfFormManager bpmConfFormManager;
     private BpmProcessManager bpmProcessManager;
+    private BpmConfBaseManager bpmConfBaseManager;
     private UserConnector userConnector;
     private FormConnector formConnector;
     private TaskDefinitionConnector taskDefinitionConnector;
@@ -59,6 +62,8 @@ public class ProcessConnectorImpl implements ProcessConnector {
         // 先设置登录用户
         IdentityService identityService = processEngine.getIdentityService();
         identityService.setAuthenticatedUserId(userId);
+        processParameters.put("_starter", userId);
+        logger.info("businessKey : {}", businessKey);
 
         ProcessInstance processInstance = processEngine.getRuntimeService()
                 .startProcessInstanceById(processDefinitionId, businessKey,
@@ -82,14 +87,36 @@ public class ProcessConnectorImpl implements ProcessConnector {
             return null;
         }
 
-        ProcessDTO processDto = new ProcessDTO();
         BpmProcess bpmProcess = bpmProcessManager
                 .get(Long.parseLong(processId));
-        String processDefinitionId = bpmProcess.getBpmConfBase()
-                .getProcessDefinitionId();
+
+        return this.convertProcess(bpmProcess);
+    }
+
+    public ProcessDTO findProcessByProcessDefinitionId(
+            String processDefinitionId) {
+        BpmConfBase bpmConfBase = bpmConfBaseManager.findUniqueBy(
+                "processDefinitionId", processDefinitionId);
+        String hql = "select bpmProcess from BpmProcess bpmProcess where bpmProcess.bpmConfBase=?";
+        BpmProcess bpmProcess = bpmProcessManager.findUnique(hql, bpmConfBase);
+
+        return this.convertProcess(bpmProcess);
+    }
+
+    public ProcessDTO convertProcess(BpmProcess bpmProcess) {
+        ProcessDTO processDto = new ProcessDTO();
+        BpmConfBase bpmConfBase = bpmProcess.getBpmConfBase();
+        String processDefinitionId = bpmConfBase.getProcessDefinitionId();
+        ProcessDefinition processDefinition = processEngine
+                .getRepositoryService().createProcessDefinitionQuery()
+                .processDefinitionId(processDefinitionId).singleResult();
         String processDefinitionName = bpmProcess.getName();
+        processDto.setId(Long.toString(bpmProcess.getId()));
         processDto.setProcessDefinitionId(processDefinitionId);
         processDto.setProcessDefinitionName(processDefinitionName);
+        processDto.setCategory(processDefinition.getCategory());
+        processDto.setKey(processDefinition.getKey());
+        processDto.setVersion(processDefinition.getVersion());
         processDto.setConfigTask(Integer.valueOf(1).equals(
                 bpmProcess.getUseTaskConf()));
 
@@ -265,7 +292,7 @@ public class ProcessConnectorImpl implements ProcessConnector {
         HistoricProcessInstanceQuery query = historyService
                 .createHistoricProcessInstanceQuery()
                 .processInstanceTenantId(tenantId).startedBy(userId)
-                .unfinished();
+                .orderByProcessInstanceStartTime().desc().unfinished();
 
         if (page.getOrderBy() != null) {
             String orderBy = page.getOrderBy();
@@ -303,6 +330,7 @@ public class ProcessConnectorImpl implements ProcessConnector {
         List<HistoricProcessInstance> historicProcessInstances = historyService
                 .createHistoricProcessInstanceQuery().startedBy(userId)
                 .processInstanceTenantId(tenantId).finished()
+                .orderByProcessInstanceStartTime().desc()
                 .listPage((int) page.getStart(), page.getPageSize());
 
         page.setResult(historicProcessInstances);
@@ -324,6 +352,7 @@ public class ProcessConnectorImpl implements ProcessConnector {
         List<HistoricProcessInstance> historicProcessInstances = historyService
                 .createHistoricProcessInstanceQuery()
                 .processInstanceTenantId(tenantId).involvedUser(userId)
+                .orderByProcessInstanceStartTime().desc()
                 .listPage((int) page.getStart(), page.getPageSize());
 
         page.setResult(historicProcessInstances);
@@ -552,9 +581,28 @@ public class ProcessConnectorImpl implements ProcessConnector {
                 .jobTenantId(tenantId)
                 .listPage((int) page.getStart(), page.getPageSize());
         page.setResult(jobs);
+
         page.setTotalCount(count);
 
         return page;
+    }
+
+    /**
+     * 根据processInstanceId获取businessKey.
+     */
+    public String findBusinessKeyByProcessInstanceId(String processInstanceId) {
+        HistoricProcessInstance historicProcessInstance = processEngine
+                .getHistoryService().createHistoricProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .processInstanceTenantId("1").singleResult();
+
+        if (historicProcessInstance == null) {
+            logger.info("cannot find processInstance : {}", processInstanceId);
+            throw new IllegalStateException("cannot find process instance : "
+                    + processInstanceId);
+        }
+
+        return historicProcessInstance.getBusinessKey();
     }
 
     @Resource
@@ -570,6 +618,11 @@ public class ProcessConnectorImpl implements ProcessConnector {
     @Resource
     public void setBpmProcessManager(BpmProcessManager bpmProcessManager) {
         this.bpmProcessManager = bpmProcessManager;
+    }
+
+    @Resource
+    public void setBpmConfBaseManager(BpmConfBaseManager bpmConfBaseManager) {
+        this.bpmConfBaseManager = bpmConfBaseManager;
     }
 
     @Resource

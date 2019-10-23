@@ -9,7 +9,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.mossle.api.keyvalue.KeyValueConnector;
+import com.mossle.api.model.ModelConnector;
 import com.mossle.api.tenant.TenantHolder;
 
 import com.mossle.core.export.Exportor;
@@ -20,6 +20,8 @@ import com.mossle.model.persistence.domain.ModelField;
 import com.mossle.model.persistence.domain.ModelInfo;
 import com.mossle.model.persistence.manager.ModelFieldManager;
 import com.mossle.model.persistence.manager.ModelInfoManager;
+
+import com.mossle.spi.process.InternalProcessConnector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +44,10 @@ public class ModelController {
     private ModelInfoManager modelInfoManager;
     private ModelFieldManager modelFieldManager;
     private JdbcTemplate jdbcTemplate;
-    private KeyValueConnector keyValueConnector;
     private Exportor exportor;
     private TenantHolder tenantHolder;
+    private InternalProcessConnector internalProcessConnector;
+    private ModelConnector modelConnector;
 
     @RequestMapping("index")
     public String index(Model model) {
@@ -79,6 +82,26 @@ public class ModelController {
         model.addAttribute("page", page);
 
         return "model/list";
+    }
+
+    @RequestMapping("redirectByKey")
+    public String redirectByKey(
+            @RequestParam("processDefinitionKey") String processDefinitionKey) {
+        String processDefinitionId = internalProcessConnector
+                .findProcessDefinitionId(processDefinitionKey);
+        ModelInfo modelInfo = modelInfoManager.findUniqueBy("code",
+                processDefinitionId);
+
+        return "redirect:/model/list.do?id=" + modelInfo.getId();
+    }
+
+    @RequestMapping("redirectById")
+    public String redirectById(
+            @RequestParam("processDefinitionId") String processDefinitionId) {
+        ModelInfo modelInfo = modelInfoManager.findUniqueBy("code",
+                processDefinitionId);
+
+        return "redirect:/model/list.do?id=" + modelInfo.getId();
     }
 
     @RequestMapping("export")
@@ -129,9 +152,13 @@ public class ModelController {
         }
 
         String processId = this.findProcessId(modelInfo.getCode());
-        page.setTotalCount(this.keyValueConnector.findTotalCount(processId,
+        // page.setTotalCount(this.keyValueConnector.findTotalCount(processId,
+        // tenantId, q));
+        // page.setResult(this.keyValueConnector.findResult(page, processId,
+        // tenantId, headers, q));
+        page.setTotalCount(this.modelConnector.findTotalCount(processId,
                 tenantId, q));
-        page.setResult(this.keyValueConnector.findResult(page, processId,
+        page.setResult(this.modelConnector.findResult(page, processId,
                 tenantId, headers, q));
     }
 
@@ -160,11 +187,6 @@ public class ModelController {
     }
 
     @Resource
-    public void setKeyValueConnector(KeyValueConnector keyValueConnector) {
-        this.keyValueConnector = keyValueConnector;
-    }
-
-    @Resource
     public void setExportor(Exportor exportor) {
         this.exportor = exportor;
     }
@@ -172,5 +194,16 @@ public class ModelController {
     @Resource
     public void setTenantHolder(TenantHolder tenantHolder) {
         this.tenantHolder = tenantHolder;
+    }
+
+    @Resource
+    public void setInternalProcessConnector(
+            InternalProcessConnector internalProcessConnector) {
+        this.internalProcessConnector = internalProcessConnector;
+    }
+
+    @Resource
+    public void setModelConnector(ModelConnector modelConnector) {
+        this.modelConnector = modelConnector;
     }
 }

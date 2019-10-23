@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.servlet.FilterChain;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
@@ -48,7 +51,7 @@ import org.springframework.session.SessionRepository;
  * {@link org.springframework.session.SessionRepository}.
  *
  * The {@link SessionRepositoryFilter} uses a {@link HttpSessionStrategy} (default
- * {@link CookieHttpSessionStrategy} to bridge logic between an
+ * {@link CookieHttpSessionStrategy}) to bridge logic between an
  * {@link javax.servlet.http.HttpSession} and the
  * {@link org.springframework.session.Session} abstraction. Specifically:
  *
@@ -72,6 +75,7 @@ import org.springframework.session.SessionRepository;
  * @param <S> the {@link ExpiringSession} type.
  * @since 1.0
  * @author Rob Winch
+ * @author Josh Cummings
  */
 @Order(SessionRepositoryFilter.DEFAULT_ORDER)
 public class SessionRepositoryFilter<S extends ExpiringSession>
@@ -289,9 +293,10 @@ public class SessionRepositoryFilter<S extends ExpiringSession>
 			setCurrentSession(null);
 
 			HttpSessionWrapper newSession = getSession();
+			int originalMaxInactiveInterval = session.getMaxInactiveInterval();
 			original.setSession(newSession.getSession());
 
-			newSession.setMaxInactiveInterval(session.getMaxInactiveInterval());
+			newSession.setMaxInactiveInterval(originalMaxInactiveInterval);
 			for (Map.Entry<String, Object> attr : attrs.entrySet()) {
 				String attrName = attr.getKey();
 				Object attrValue = attr.getValue();
@@ -397,6 +402,12 @@ public class SessionRepositoryFilter<S extends ExpiringSession>
 					.getRequestedSessionId(this);
 		}
 
+		@Override
+		public RequestDispatcher getRequestDispatcher(String path) {
+			RequestDispatcher requestDispatcher = super.getRequestDispatcher(path);
+			return new SessionCommittingRequestDispatcher(requestDispatcher);
+		}
+
 		/**
 		 * Allows creating an HttpSession from a Session instance.
 		 *
@@ -417,6 +428,34 @@ public class SessionRepositoryFilter<S extends ExpiringSession>
 				SessionRepositoryFilter.this.sessionRepository.delete(getId());
 			}
 		}
+
+		/**
+		 * Ensures session is committed before issuing an include.
+		 *
+		 * @since 1.3.4
+		 */
+		private final class SessionCommittingRequestDispatcher
+				implements RequestDispatcher {
+
+			private final RequestDispatcher delegate;
+
+			SessionCommittingRequestDispatcher(RequestDispatcher delegate) {
+				this.delegate = delegate;
+			}
+
+			public void forward(ServletRequest request, ServletResponse response)
+					throws ServletException, IOException {
+				this.delegate.forward(request, response);
+			}
+
+			public void include(ServletRequest request, ServletResponse response)
+					throws ServletException, IOException {
+				SessionRepositoryRequestWrapper.this.commitSession();
+				this.delegate.include(request, response);
+			}
+
+		}
+
 	}
 
 	/**

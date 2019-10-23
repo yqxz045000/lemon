@@ -7,9 +7,9 @@
   <head>
     <%@include file="/common/meta.jsp"%>
     <title>401 - <spring:message code="core.401.failed" text="认证失败"/></title>
-	<link href="${cdnPrefix}/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-	<link href="${cdnPrefix}/bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet">
-	<script type="text/javascript" src="${cdnPrefix}/jquery/jquery.min.js"></script>
+	<link href="${cdnPrefix}/public/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+	<link href="${cdnPrefix}/public/bootstrap/3.3.7/css/bootstrap-responsive.min.css" rel="stylesheet">
+	<script type="text/javascript" src="${cdnPrefix}/public/jquery/1.12.4/jquery.min.js"></script>
 	<script type="text/javascript">
 $(function() {
 	$('#targetContentDiv').height($(window).innerHeight() - 150);

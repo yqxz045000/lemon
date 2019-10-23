@@ -11,9 +11,11 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.mossle.api.store.StoreConnector;
+import com.mossle.api.auth.CurrentUserHolder;
 import com.mossle.api.store.StoreDTO;
 import com.mossle.api.tenant.TenantHolder;
+
+import com.mossle.client.store.StoreClient;
 
 import com.mossle.cms.CmsConstants;
 import com.mossle.cms.persistence.domain.CmsArticle;
@@ -25,8 +27,8 @@ import com.mossle.cms.persistence.manager.CmsAttachmentManager;
 import com.mossle.cms.persistence.manager.CmsCatalogManager;
 import com.mossle.cms.persistence.manager.CmsCommentManager;
 import com.mossle.cms.service.RenderService;
+import com.mossle.cms.support.CommentDTO;
 
-import com.mossle.core.auth.CurrentUserHolder;
 import com.mossle.core.export.Exportor;
 import com.mossle.core.export.TableModel;
 import com.mossle.core.mapper.BeanMapper;
@@ -61,7 +63,7 @@ public class CmsArticleController {
     private BeanMapper beanMapper = new BeanMapper();
     private MessageHelper messageHelper;
     private RenderService renderService;
-    private StoreConnector storeConnector;
+    private StoreClient storeClient;
     private JsonMapper jsonMapper = new JsonMapper();
     private CurrentUserHolder currentUserHolder;
     private TenantHolder tenantHolder;
@@ -72,6 +74,8 @@ public class CmsArticleController {
     @RequestMapping("cms-article-list")
     public String list(@ModelAttribute Page page,
             @RequestParam Map<String, Object> parameterMap, Model model) {
+        page.setDefaultOrder("publishTime", Page.DESC);
+
         String tenantId = tenantHolder.getTenantId();
         List<PropertyFilter> propertyFilters = PropertyFilter
                 .buildFromMap(parameterMap);
@@ -86,7 +90,9 @@ public class CmsArticleController {
      * 编辑.
      */
     @RequestMapping("cms-article-input")
-    public String input(@RequestParam(value = "id", required = false) Long id,
+    public String input(
+            @RequestParam(value = "id", required = false) Long id,
+            @RequestParam(value = "catalogId", required = false) Long catalogId,
             Model model) {
         String tenantId = tenantHolder.getTenantId();
 
@@ -98,6 +104,11 @@ public class CmsArticleController {
         model.addAttribute("cmsCatalogs",
                 cmsCatalogManager.findBy("tenantId", tenantId));
 
+        if (catalogId != null) {
+            CmsCatalog cmsCatalog = this.cmsCatalogManager.get(catalogId);
+            model.addAttribute("cmsCatalog", cmsCatalog);
+        }
+
         return "cms/cms-article-input";
     }
 
@@ -105,9 +116,11 @@ public class CmsArticleController {
      * 保存文章.
      */
     @RequestMapping("cms-article-save")
-    public String save(@ModelAttribute CmsArticle cmsArticle,
+    public String save(
+            @ModelAttribute CmsArticle cmsArticle,
             @RequestParam("cmsCatalogId") Long cmsCatalogId,
             @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "logoFile", required = false) MultipartFile logoFile,
             RedirectAttributes redirectAttributes) throws Exception {
         String tenantId = tenantHolder.getTenantId();
         Long id = cmsArticle.getId();
@@ -131,8 +144,7 @@ public class CmsArticleController {
 
         // attachment
         if (file != null) {
-            StoreDTO storeDto = storeConnector.saveStore(
-                    "cms/html/r/attachments",
+            StoreDTO storeDto = storeClient.saveStore("cms/html/r/attachments",
                     new MultipartFileDataSource(file), tenantId);
             CmsAttachment cmsAttachment = new CmsAttachment();
             cmsAttachment.setCmsArticle(dest);
@@ -141,12 +153,20 @@ public class CmsArticleController {
             cmsAttachmentManager.save(cmsAttachment);
         }
 
+        // logo
+        if (logoFile != null) {
+            StoreDTO storeDto = storeClient.saveStore("cms/html/r/attachments",
+                    new MultipartFileDataSource(logoFile), tenantId);
+            dest.setLogo(storeDto.getKey());
+        }
+
         cmsArticleManager.save(dest);
 
         messageHelper.addFlashMessage(redirectAttributes, "core.success.save",
                 "保存成功");
 
-        return "redirect:/cms/cms-article-list.do";
+        return "redirect:/cms/cms-article-list.do?filter_EQL_cmsCatalog.id="
+                + cmsCatalogId;
     }
 
     /**
@@ -227,7 +247,22 @@ public class CmsArticleController {
         renderService.render(cmsArticle);
         cmsArticleManager.save(cmsArticle);
 
-        return "redirect:/cms/cms-article-list.do";
+        return "redirect:/cms/cms-article-list.do?filter_EQL_cmsCatalog.id="
+                + cmsArticle.getCmsCatalog().getId();
+    }
+
+    /**
+     * 下线.
+     */
+    @RequestMapping("cms-article-withdraw")
+    public String withdraw(@RequestParam("id") Long id) {
+        CmsArticle cmsArticle = cmsArticleManager.get(id);
+        cmsArticle.setStatus(0);
+        renderService.render(cmsArticle);
+        cmsArticleManager.save(cmsArticle);
+
+        return "redirect:/cms/cms-article-list.do?filter_EQL_cmsCatalog.id="
+                + cmsArticle.getCmsCatalog().getId();
     }
 
     /**
@@ -238,9 +273,25 @@ public class CmsArticleController {
             Model model) {
         List<CmsCatalog> cmsCatalogs = this.cmsCatalogManager.getAll();
         CmsArticle cmsArticle = this.cmsArticleManager.get(id);
-        page = this.cmsCommentManager.pagedQuery(
-                "from CmsComment where cmsArticle=? order by id desc",
-                page.getPageNo(), page.getPageSize(), cmsArticle);
+        page = this.cmsCommentManager
+                .pagedQuery(
+                        "from CmsComment where cmsArticle=? and conversation=null order by id desc",
+                        page.getPageNo(), page.getPageSize(), cmsArticle);
+
+        List<CmsComment> cmsComments = (List<CmsComment>) page.getResult();
+
+        List<CommentDTO> commentDtos = new ArrayList<CommentDTO>();
+        page.setResult(commentDtos);
+
+        for (CmsComment cmsComment : cmsComments) {
+            CommentDTO commentDto = new CommentDTO();
+            commentDto.setCmsComment(cmsComment);
+
+            String hql = "from CmsComment where conversation=? order by id asc";
+            commentDto.setChildren(cmsCommentManager.find(hql,
+                    cmsComment.getId()));
+            commentDtos.add(commentDto);
+        }
 
         String html = renderService.view(cmsArticle, cmsCatalogs, page);
 
@@ -257,7 +308,7 @@ public class CmsArticleController {
     public String uploadImage(@RequestParam("CKEditorFuncNum") String callback,
             @RequestParam("upload") MultipartFile attachment) throws Exception {
         String tenantId = tenantHolder.getTenantId();
-        StoreDTO storeDto = storeConnector.saveStore("cms/html/r/images",
+        StoreDTO storeDto = storeClient.saveStore("cms/html/r/images",
                 new MultipartFileDataSource(attachment), tenantId);
 
         return "<script type='text/javascript'>"
@@ -299,7 +350,7 @@ public class CmsArticleController {
     public String upload(@RequestParam("id") Long id,
             @RequestParam("files[]") MultipartFile attachment) throws Exception {
         String tenantId = tenantHolder.getTenantId();
-        StoreDTO storeDto = storeConnector.saveStore("cms/html/r/image",
+        StoreDTO storeDto = storeClient.saveStore("cms/html/r/image",
                 new MultipartFileDataSource(attachment), tenantId);
         CmsArticle cmsArticle = cmsArticleManager.get(id);
         CmsAttachment cmsAttachment = new CmsAttachment();
@@ -476,8 +527,8 @@ public class CmsArticleController {
     }
 
     @Resource
-    public void setStoreConnector(StoreConnector storeConnector) {
-        this.storeConnector = storeConnector;
+    public void setStoreClient(StoreClient storeClient) {
+        this.storeClient = storeClient;
     }
 
     @Resource

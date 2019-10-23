@@ -5,6 +5,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Resource;
+
 import com.mossle.api.tenant.TenantConnector;
 import com.mossle.api.tenant.TenantDTO;
 import com.mossle.api.user.UserConnector;
@@ -23,6 +25,7 @@ public class DatabaseUserAuthConnector implements UserAuthConnector {
     private JdbcTemplate jdbcTemplate;
     private TenantConnector tenantConnector;
     private UserConnector userConnector;
+    private boolean checkAccountStatus = false;
 
     // ~
     private String sqlFindPermissions = "SELECT P.CODE AS PERMISSION"
@@ -81,6 +84,33 @@ public class DatabaseUserAuthConnector implements UserAuthConnector {
         userAuthDto.setAccountLocked(false);
         userAuthDto.setAccountExpired(false);
 
+        this.doCheckAccountStatus(userAuthDto, userDto);
+
+        // permissions
+        List<Map<String, Object>> permissions = jdbcTemplate.queryForList(
+                sqlFindPermissions, userDto.getId(), tenantDto.getId());
+        logger.debug("sqlFindPermissions : {}", sqlFindPermissions);
+        logger.debug("userDto.getId() : {}", userDto.getId());
+        logger.debug("tenantDto.getId() : {}", tenantDto.getId());
+        logger.debug("permissions : {}", permissions);
+        userAuthDto.setPermissions(this.convertMapListToStringList(permissions,
+                "permission"));
+
+        // roles
+        List<Map<String, Object>> roles = jdbcTemplate.queryForList(
+                sqlFindRoles, userDto.getId(), tenantDto.getId());
+        userAuthDto.setRoles(this.convertMapListToStringList(roles, "role"));
+
+        return userAuthDto;
+    }
+
+    public void doCheckAccountStatus(UserAuthDTO userAuthDto, UserDTO userDto) {
+        if (!checkAccountStatus) {
+            logger.debug("skip check account status");
+
+            return;
+        }
+
         // lock
         int lockCount = jdbcTemplate.queryForObject(sqlFindAccountLockInfo,
                 Integer.class, userDto.getUsername());
@@ -110,23 +140,6 @@ public class DatabaseUserAuthConnector implements UserAuthConnector {
         } catch (Exception ex) {
             logger.debug(ex.getMessage(), ex);
         }
-
-        // permissions
-        List<Map<String, Object>> permissions = jdbcTemplate.queryForList(
-                sqlFindPermissions, userDto.getId(), tenantDto.getId());
-        logger.debug("sqlFindPermissions : {}", sqlFindPermissions);
-        logger.debug("userDto.getId() : {}", userDto.getId());
-        logger.debug("tenantDto.getId() : {}", tenantDto.getId());
-        logger.debug("permissions : {}", permissions);
-        userAuthDto.setPermissions(this.convertMapListToStringList(permissions,
-                "permission"));
-
-        // roles
-        List<Map<String, Object>> roles = jdbcTemplate.queryForList(
-                sqlFindRoles, userDto.getId(), tenantDto.getId());
-        userAuthDto.setRoles(this.convertMapListToStringList(roles, "role"));
-
-        return userAuthDto;
     }
 
     public List<String> convertMapListToStringList(
@@ -144,14 +157,17 @@ public class DatabaseUserAuthConnector implements UserAuthConnector {
         return stringList;
     }
 
+    @Resource
     public void setTenantConnector(TenantConnector tenantConnector) {
         this.tenantConnector = tenantConnector;
     }
 
+    @Resource
     public void setUserConnector(UserConnector userConnector) {
         this.userConnector = userConnector;
     }
 
+    @Resource
     public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -166,5 +182,9 @@ public class DatabaseUserAuthConnector implements UserAuthConnector {
 
     public void setSqlFindAccountLockInfo(String sqlFindAccountLockInfo) {
         this.sqlFindAccountLockInfo = sqlFindAccountLockInfo;
+    }
+
+    public void setCheckAccountStatus(boolean checkAccountStatus) {
+        this.checkAccountStatus = checkAccountStatus;
     }
 }

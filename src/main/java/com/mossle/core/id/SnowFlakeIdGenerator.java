@@ -16,11 +16,10 @@ public class SnowFlakeIdGenerator implements IdGenerator {
     private static final long timestampLeftShift = sequenceBits + workerIdBits;
     public static final long sequenceMask = -1L ^ (-1L << sequenceBits);
 
-    // private static final long twepoch = 1361753741828L;
-    // (2016 - 1970) * 365 * 24 * 60 * 60 * 1000
-    // private long twepoch = 1450656000000L;
-    // 2016-2-14 11:08
-    private long twepoch = 1455419300740L;
+    // (2018 - 1970) * 365 * 24 * 60 * 60 * 1000
+    // private long twepoch = 1513728000000L;
+    // 2018-7-4 18:32
+    private long twepoch = 1530700315824L;
     private final long workerId;
     private long sequence = 0L;
     private long lastTimestamp = -1L;
@@ -65,14 +64,10 @@ public class SnowFlakeIdGenerator implements IdGenerator {
         }
 
         if (timestamp < this.lastTimestamp) {
-            try {
-                throw new Exception(
-                        String.format(
-                                "Clock moved backwards.  Refusing to generate id for %d milliseconds",
-                                this.lastTimestamp - timestamp));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            throw new RuntimeException(
+                    String.format(
+                            "Clock moved backwards.  Refusing to generate id for %d milliseconds",
+                            this.lastTimestamp - timestamp));
         }
 
         this.lastTimestamp = timestamp;

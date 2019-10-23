@@ -91,4 +91,20 @@ public interface InternalProcessConnector {
      * 触发execution继续执行.
      */
     void signalExecution(String executionId);
+
+    /**
+     * 根据key找到最新的id.
+     */
+    String findProcessDefinitionId(String processDefinitionKey);
+
+    /**
+     * 判断是否可以撤销.
+     */
+    boolean checkWithdraw(String historyTaskId);
+
+    /**
+     * 触发事件.
+     */
+    void fireEvent(String eventType, String businessKey, String userId,
+            String activityId, String activityName);
 }

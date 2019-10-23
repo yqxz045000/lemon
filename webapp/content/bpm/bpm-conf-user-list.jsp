@@ -38,16 +38,16 @@ $(function() {
     table.configPageSize('.m-page-size');
 });
     </script>
-    <link type="text/css" rel="stylesheet" href="${cdnPrefix}/userpicker3-v2/userpicker.css">
-    <script type="text/javascript" src="${cdnPrefix}/userpicker3-v2/userpicker.js"></script>
+    <link type="text/css" rel="stylesheet" href="${cdnPrefix}/public/mossle-userpicker/3.0/userpicker.css">
+    <script type="text/javascript" src="${cdnPrefix}/public/mossle-userpicker/3.0/userpicker.js"></script>
 	<script type="text/javascript">
 $(function() {
 	createUserPicker({
 		modalId: 'userPicker',
 		showExpression: true,
 		searchUrl: '${tenantPrefix}/rs/user/search',
-		treeUrl: '${tenantPrefix}/rs/party/tree?partyStructTypeId=1',
-		childUrl: '${tenantPrefix}/rs/party/searchUser'
+		treeUrl: '${tenantPrefix}/party/rs/tree-data?type=struct',
+		childUrl: '${tenantPrefix}/party/rs/search-user'
 	});
 })
     </script>
@@ -254,7 +254,7 @@ $(function() {
 			  <option value="资源中随机分配" ${bpmConfAssign.name=='资源中随机分配' ? 'selected' : ''}>资源中随机分配</option>
 			</select>
 		    
-			<button class="btn btn-small" onclick="document.bpmConfAssignForm.submit()">提交</button>
+			<button class="btn btn-default" onclick="document.bpmConfAssignForm.submit()">提交</button>
 		  </form>
 
 		</div>
@@ -289,7 +289,7 @@ $(function() {
               <span class="add-on" style="padding:2px;">%</span>
             </div>
 		    
-			<button class="btn btn-small" onclick="document.bpmConfCountersignForm.submit()">提交</button>
+			<button class="btn btn-default" onclick="document.bpmConfCountersignForm.submit()">提交</button>
 		  </form>
 
 		</div>

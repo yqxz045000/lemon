@@ -9,12 +9,18 @@
     <%@include file="/common/meta.jsp"%>
     <title>designer</title>
     <%@include file="/common/s3.jsp"%>
-	<link href="${cdnPrefix}/xform3/styles/xform.css" rel="stylesheet">
-    <script type="text/javascript" src="${cdnPrefix}/xform3/xform-packed.js"></script>
-    <script type="text/javascript" src="${cdnPrefix}/xform3/adaptor.js"></script>
+	<link href="${cdnPrefix}/public/mossle-xform/0.0.11/styles/xform.css" rel="stylesheet">
+    <script type="text/javascript" src="${cdnPrefix}/public/mossle-xform/0.0.11/xform-all.js"></script>
+    <script type="text/javascript" src="${cdnPrefix}/public/mossle-xform/0.0.11/adaptor.js"></script>
+
+    <link type="text/css" rel="stylesheet" href="${cdnPrefix}/public/mossle-userpicker/3.0/userpicker.css">
+    <script type="text/javascript" src="${cdnPrefix}/public/mossle-userpicker/3.0/userpicker.js"></script>
+
+    <link type="text/css" rel="stylesheet" href="${cdnPrefix}/public/webuploader/0.1.5/webuploader.css">
+	<script type="text/javascript" src="${cdnPrefix}/public/webuploader/0.1.5/webuploader.js"></script>
 
 	<style type="text/css">
-.xf-pallete {
+.xf-palette {
 	border: dotted 2px gray;
 	width: 45%;
 	margin: 5px;
@@ -25,7 +31,7 @@
 	float: left;
 }
 
-.xf-pallete img {
+.xf-palette img {
 	float: right;
 }
 
@@ -57,45 +63,77 @@
 		  <div class="tab-content">
 			<div class="tab-pane active" id="operation">
 			  <div style="padding-top:5px;">
-				<div class="xf-pallete" title="label">
-				  <img src="${cdnPrefix}/xform/images/xform/new_label.png">
-				  label
+				<div class="xf-palette" title="label">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_label.png">
+				  标签
 				</div>
-				<div class="xf-pallete" title="textfield">
-				  <img src="${cdnPrefix}/xform/images/xform/new_input.png">
-				  textfield
+				<div class="xf-palette" title="textfield">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_input.png">
+				  单行文本
 				</div>
-				<div class="xf-pallete" title="password">
-				  <img src="${cdnPrefix}/xform/images/xform/new_secret.png">
-				  password
+				<div class="xf-palette" title="password">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_secret.png">
+				  密码
 				</div>
-				<div class="xf-pallete" title="textarea">
-				  <img src="${cdnPrefix}/xform/images/xform/new_textarea.png">
-				  textarea
+				<div class="xf-palette" title="textarea">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_textarea.png">
+				  多行文本
 				</div>
-				<div class="xf-pallete" title="select">
-				  <img src="${cdnPrefix}/xform/images/xform/new_select.png">
-				  select
+				<div class="xf-palette" title="radio">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_item.png">
+				  单选
 				</div>
-				<div class="xf-pallete" title="radio">
-				  <img src="${cdnPrefix}/xform/images/xform/new_item.png">
-				  radio
+				<div class="xf-palette" title="select">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_select.png">
+				  下拉选择
 				</div>
-				<div class="xf-pallete" title="checkbox">
-				  <img src="${cdnPrefix}/xform/images/xform/new_itemset.png">
-				  checkbox
+				<div class="xf-palette" title="checkbox">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_itemset.png">
+				  多选
 				</div>
-				<div class="xf-pallete" title="fileupload">
-				  <img src="${cdnPrefix}/xform/images/xform/new_upload.png">
-				  fileupload
+				<div class="xf-palette" title="fileupload">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_upload.png">
+				  文件上传
 				</div>
-				<div class="xf-pallete" title="datepicker">
-				  <img src="${cdnPrefix}/xform/images/xform/new_range.png">
-				  datepicker
+				<div class="xf-palette" title="datepicker">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_range.png">
+				  日期
 				</div>
-				<div class="xf-pallete" title="userpicker">
-				  <img src="${cdnPrefix}/xform/images/xform/userpicker.png">
-				  userpicker
+				<div class="xf-palette" title="datetimepicker">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_range.png">
+				  日期时间
+				</div>
+
+				<div class="xf-palette" title="userpicker">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/userpicker.png">
+				  选择用户
+				</div>
+
+				<div class="xf-palette" title="departmentpicker">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/userpicker.png">
+				  选择部门
+				</div>
+
+				<div style="clear:both"></div>
+
+				<div style="border-top:2px dotted gray;margin-top:5px;margin-bottom:5px;margin-left:5px;margin-right:10px;"></div>
+				<!--
+				<div class="xf-palette" title="columnSection2">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.13/images/xform/new_label.png">
+				  二列布局
+				</div>
+				<div class="xf-palette" title="columnSection3">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.13/images/xform/new_label.png">
+				  三列布局
+				</div>
+				-->
+				<div class="xf-palette" title="tableSection">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_label.png">
+				  表格布局
+				</div>
+				<div class="xf-palette" title="gridSection">
+				  <img src="${cdnPrefix}/public/mossle-xform/0.0.11/images/xform/new_label.png">
+				  子表布局
 				</div>
 			  </div>
 			</div>

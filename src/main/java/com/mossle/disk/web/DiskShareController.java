@@ -5,7 +5,7 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
-import com.mossle.core.auth.CurrentUserHolder;
+import com.mossle.api.auth.CurrentUserHolder;
 
 import com.mossle.disk.persistence.domain.DiskInfo;
 import com.mossle.disk.persistence.domain.DiskShare;
@@ -91,6 +91,7 @@ public class DiskShareController {
         diskShare.setCountView(0);
         diskShare.setCountSave(0);
         diskShare.setCountDownload(0);
+        diskShare.setCatalog("public");
         diskShareManager.save(diskShare);
 
         return "redirect:/disk/disk-share-list.do";
@@ -121,6 +122,7 @@ public class DiskShareController {
         diskShare.setCountSave(0);
         diskShare.setCountDownload(0);
         diskShare.setSharePassword(this.generatePassword());
+        diskShare.setCatalog("external");
         diskShareManager.save(diskShare);
 
         return "redirect:/disk/disk-share-list.do";

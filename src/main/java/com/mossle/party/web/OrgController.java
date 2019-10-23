@@ -5,7 +5,6 @@ import java.util.List;
 import javax.annotation.Resource;
 
 import com.mossle.api.tenant.TenantHolder;
-import com.mossle.api.user.UserConnector;
 
 import com.mossle.core.mapper.BeanMapper;
 import com.mossle.core.page.Page;
@@ -45,33 +44,25 @@ public class OrgController {
     private PartyTypeManager partyTypeManager;
     private PartyStructManager partyStructManager;
     private PartyStructTypeManager partyStructTypeManager;
-    private UserConnector userConnector;
     private PartyService partyService;
     private BeanMapper beanMapper = new BeanMapper();
     private TenantHolder tenantHolder;
 
     /**
      * 初始化组织机构的维度，包括对应维度下的根节点.
+     *
+     * @param model Model
+     * @param partyStructTypeId Long
+     * @param partyEntityId Long
+     * @return PartyEntity
      */
     public PartyEntity init(Model model, Long partyStructTypeId,
             Long partyEntityId) {
         String tenantId = tenantHolder.getTenantId();
 
-        // 维度，比如行政组织
-        String hqlPartyStructType = "from PartyStructType where tenantId=? and display='true' order by priority";
-        List<PartyStructType> partyStructTypes = partyStructTypeManager.find(
-                hqlPartyStructType, tenantId);
-        PartyStructType partyStructType = null;
-
-        if (partyStructTypeId != null) {
-            partyStructType = partyStructTypeManager.get(partyStructTypeId);
-        } else {
-            if (!partyStructTypes.isEmpty()) {
-                // 如果没有指定维度，就使用第一个维度当做默认维度
-                partyStructType = partyStructTypes.get(0);
-                partyStructTypeId = partyStructType.getId();
-            }
-        }
+        PartyStructType partyStructType = this.findDefaultPartyStructType(
+                partyStructTypeId, model);
+        partyStructTypeId = partyStructType.getId();
 
         if (partyEntityId == null) {
             // 如果没有指定组织，就返回顶级组织
@@ -83,7 +74,6 @@ public class OrgController {
             }
         }
 
-        model.addAttribute("partyStructTypes", partyStructTypes);
         model.addAttribute("partyStructType", partyStructType);
         model.addAttribute("partyStructTypeId", partyStructTypeId);
         model.addAttribute("partyEntityId", partyEntityId);
@@ -95,8 +85,44 @@ public class OrgController {
         return partyEntityManager.get(partyEntityId);
     }
 
+    public PartyStructType findDefaultPartyStructType(Long partyStructTypeId,
+            Model model) {
+        String tenantId = tenantHolder.getTenantId();
+
+        // 维度，比如行政组织
+        String hqlPartyStructType = "from PartyStructType where tenantId=? and display='true' order by priority";
+        List<PartyStructType> partyStructTypes = partyStructTypeManager.find(
+                hqlPartyStructType, tenantId);
+        PartyStructType partyStructType = null;
+
+        if (partyStructTypeId != null) {
+            partyStructType = partyStructTypeManager.get(partyStructTypeId);
+        }
+
+        if (partyStructType == null) {
+            if (!partyStructTypes.isEmpty()) {
+                // 如果没有指定维度，就使用第一个维度当做默认维度
+                partyStructType = partyStructTypes.get(0);
+            } else {
+                throw new IllegalStateException(
+                        "cannot find default partyStructType");
+            }
+        }
+
+        model.addAttribute("partyStructTypes", partyStructTypes);
+
+        return partyStructType;
+    }
+
     /**
      * 显示下级列表.
+     *
+     * @param model Model
+     * @param partyStructTypeId Long
+     * @param partyEntityId Long
+     * @param name String 
+     * @param page Page
+     * @return String
      */
     @RequestMapping("org-list")
     public String list(
@@ -116,6 +142,10 @@ public class OrgController {
                 hql += (" and childEntity.name like '%" + name + "%'");
             }
 
+            if (partyStructTypeId == null) {
+                partyStructTypeId = 1L;
+            }
+
             // 如果没有选中partyEntityId，就啥也不显示
             page = partyStructTypeManager.pagedQuery(hql, page.getPageNo(),
                     page.getPageSize(), partyEntity, partyStructTypeId);
@@ -129,11 +159,22 @@ public class OrgController {
             model.addAttribute("childTypes", childTypes);
         }
 
+        // 用户职位对应的partyTypeId
+        model.addAttribute("userPositionPartyStructType",
+                partyStructTypeManager.findUniqueBy("type", "user-position"));
+
         return "party/org-list";
     }
 
     /**
      * 编辑下级.
+     *
+     * @param model Model
+     * @param partyStructTypeId Long
+     * @param partyTypeId Long
+     * @param partyEntityId Long
+     * @return String
+     * @throws Exception ex
      */
     @RequestMapping("org-input")
     public String input(
@@ -153,6 +194,16 @@ public class OrgController {
 
     /**
      * 添加下级.
+     *
+     * @param partyStruct PartyStruct
+     * @param childEntityRef String
+     * @param childEntityId Long
+     * @param childEntityName String
+     * @param partyEntityId Long
+     * @param partyTypeId Long
+     * @param partyStructTypeId Long
+     * @return String
+     * @throws Exception ex
      */
     @RequestMapping("org-save")
     public String save(
@@ -241,6 +292,11 @@ public class OrgController {
 
     /**
      * 删除下级.
+     *
+     * @param selectedItem List
+     * @param partyEntityId Long
+     * @param partyStructTypeId Long
+     * @return String
      */
     @RequestMapping("org-remove")
     public String removeUser(
@@ -259,6 +315,12 @@ public class OrgController {
 
     /**
      * 维护负责人.
+     *
+     * @param model Model
+     * @param partyStructTypeId Long
+     * @param partyEntityId Long
+     * @return String
+     * @throws Exception ex
      */
     @RequestMapping("org-admin-list")
     public String orgAdminList(
@@ -266,15 +328,16 @@ public class OrgController {
             @RequestParam(value = "partyStructTypeId", required = false) Long partyStructTypeId,
             @RequestParam(value = "partyEntityId", required = false) Long partyEntityId)
             throws Exception {
-        PartyEntity partyEntity = init(model, partyStructTypeId, partyEntityId);
+        PartyEntity partyEntity = this.init(model, partyStructTypeId,
+                partyEntityId);
 
         model.addAttribute("partyEntity", partyEntity);
 
-        // TODO: 先写死id=2是负责关系
+        // TODO: 先写死type='manage'是负责关系
         // PartyStructType partyStructType = partyStructTypeManager.get(2L);
         if (partyEntity != null) {
             // 组织的负责人可能是岗位，可能是人
-            String hql = "from PartyStruct where parentEntity=? and partyStructType=2";
+            String hql = "from PartyStruct where parentEntity=? and partyStructType.type='manage'";
 
             // 如果没有选中partyEntityId，就啥也不显示
             Page page = partyStructTypeManager.pagedQuery(hql, 1, 10,
@@ -287,6 +350,13 @@ public class OrgController {
 
     /**
      * 添加管理人或管理岗位.
+     *
+     * @param model Model
+     * @param partyStructTypeId Long
+     * @param partyTypeId Long
+     * @param partyEntityId Long
+     * @return String
+     * @throws Exception ex
      */
     @RequestMapping("org-admin-input")
     public String orgAdminInput(
@@ -297,7 +367,8 @@ public class OrgController {
             throws Exception {
         partyStructTypeId = 1L;
 
-        PartyEntity partyEntity = init(model, partyStructTypeId, partyEntityId);
+        PartyEntity partyEntity = this.init(model, partyStructTypeId,
+                partyEntityId);
         PartyType partyType = partyTypeManager.get(partyTypeId);
 
         model.addAttribute("partyEntity", partyEntity);
@@ -308,6 +379,16 @@ public class OrgController {
 
     /**
      * 保存管理.
+     *
+     * @param partyStruct PartyStruct
+     * @param childEntityRef String
+     * @param childEntityId Long
+     * @param childEntityName String
+     * @param partyEntityId Long
+     * @param partyTypeId Long
+     * @param partyStructTypeId Long
+     * @return String
+     * @throws Exception ex
      */
     @RequestMapping("org-admin-save")
     public String orgAdminSave(
@@ -378,18 +459,27 @@ public class OrgController {
 
     /**
      * 添加职位.
+     *
+     * @param model Model
+     * @param partyStructTypeId Long
+     * @param partyTypeType Long
+     * @param partyEntityId Long
+     * @return String
+     * @throws Exception ex
      */
     @RequestMapping("org-position-input")
     public String orgPositionInput(
             Model model,
             @RequestParam(value = "partyStructTypeId", required = false) Long partyStructTypeId,
-            @RequestParam(value = "partyTypeId", required = false) Long partyTypeId,
+            @RequestParam(value = "partyTypeType", required = false) Integer partyTypeType,
             @RequestParam(value = "partyEntityId", required = false) Long partyEntityId)
             throws Exception {
         partyStructTypeId = 1L;
 
-        PartyEntity partyEntity = init(model, partyStructTypeId, partyEntityId);
-        PartyType partyType = partyTypeManager.get(partyTypeId);
+        PartyEntity partyEntity = this.init(model, partyStructTypeId,
+                partyEntityId);
+        PartyType partyType = partyTypeManager.findUniqueBy("type",
+                partyTypeType);
 
         model.addAttribute("partyEntity", partyEntity);
         model.addAttribute("partyType", partyType);
@@ -399,6 +489,16 @@ public class OrgController {
 
     /**
      * 保存职位.
+     *
+     * @param partyStruct PartyStruct
+     * @param childEntityRef String
+     * @param childEntityId Long
+     * @param childEntityName String
+     * @param partyEntityId Long
+     * @param partyTypeId Long
+     * @param partyStructTypeId Long
+     * @return String
+     * @throws Exception ex
      */
     @RequestMapping("org-position-save")
     public String orgPositionSave(
@@ -413,7 +513,8 @@ public class OrgController {
         PartyType partyType = partyTypeManager.get(partyTypeId);
 
         // 岗位人员是5
-        PartyStructType partyStructType = partyStructTypeManager.get(5L);
+        PartyStructType partyStructType = partyStructTypeManager.findUniqueBy(
+                "type", "user-position");
 
         if (partyType.getType() == TYPE_POSITION) {
             // 岗位
@@ -452,6 +553,13 @@ public class OrgController {
                 + partyStructTypeId + "&partyEntityId=" + partyEntityId;
     }
 
+    // 手工清除系统中已有的垃圾数据 清除垃圾数据 孤立节点 孤儿节点
+    @RequestMapping("org-clear-orphan")
+    public void removeOrphan() {
+        this.partyService.removeOrphansByPartyEntities();
+        logger.debug("清除垃圾数据 清除孤立节点 sucess");
+    }
+
     // ~ ==================================================
     @Resource
     public void setPartyEntityManager(PartyEntityManager partyEntityManager) {
@@ -472,11 +580,6 @@ public class OrgController {
     public void setPartyStructTypeManager(
             PartyStructTypeManager partyStructTypeManager) {
         this.partyStructTypeManager = partyStructTypeManager;
-    }
-
-    @Resource
-    public void setUserConnector(UserConnector userConnector) {
-        this.userConnector = userConnector;
     }
 
     @Resource

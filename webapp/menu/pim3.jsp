@@ -29,22 +29,6 @@
   </div>
 
   <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="collapse-header-task" data-toggle="collapse" data-parent="#accordion" href="#collapse-body-task" aria-expanded="true" aria-controls="collapse-body-delegate">
-      <h4 class="panel-title">
-	    <i class="glyphicon glyphicon-list"></i>
-        个人任务
-      </h4>
-    </div>
-    <div id="collapse-body-task" class="panel-collapse collapse ${currentMenu == 'pim-task' ? 'in' : ''}" role="tabpanel" aria-labelledby="collapse-header-task">
-      <div class="panel-body">
-        <ul class="nav nav-list">
-		  <li><a href="${tenantPrefix}/pim/pim-task-index.do"><i class="glyphicon glyphicon-list"></i> 个人任务</a></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="collapse-header-msg" data-toggle="collapse" data-parent="#accordion" href="#collapse-body-msg" aria-expanded="true" aria-controls="collapse-body-msg">
       <h4 class="panel-title">
 	    <i class="glyphicon glyphicon-list"></i>
@@ -90,7 +74,6 @@
       <div class="panel-body">
         <ul class="nav nav-list">
 		  <li><a href="${tenantPrefix}/pim/pim-note-list.do"><i class="glyphicon glyphicon-list"></i> 便签</a></li>
-		  <li><a href="${tenantPrefix}/pim/pim-note-view.do"><i class="glyphicon glyphicon-list"></i> 便签墙</a></li>
         </ul>
       </div>
     </div>
@@ -139,6 +122,22 @@
       <div class="panel-body">
         <ul class="nav nav-list">
 		  <li><a href="${tenantPrefix}/pim/pim-remind-list.do"><i class="glyphicon glyphicon-list"></i> 提醒</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="collapse-header-pim" data-toggle="collapse" data-parent="#accordion" href="#collapse-body-plan" aria-expanded="true" aria-controls="collapse-body-plan">
+      <h4 class="panel-title">
+	    <i class="glyphicon glyphicon-list"></i>
+        计划
+      </h4>
+    </div>
+    <div id="collapse-body-plan" class="panel-collapse collapse ${currentMenu == 'plan' ? 'in' : ''}" role="tabpanel" aria-labelledby="collapse-header-plan">
+      <div class="panel-body">
+        <ul class="nav nav-list">
+		  <li><a href="${tenantPrefix}/pim/pim-plan-list.do"><i class="glyphicon glyphicon-list"></i> 计划</a></li>
         </ul>
       </div>
     </div>

@@ -9,7 +9,7 @@
     <%@include file="/common/meta.jsp"%>
     <title>通讯录</title>
     <%@include file="/common/s3.jsp"%>
-	<script type="text/javascript" src="${cdnPrefix}/jquery.qrcode.min.js"></script>
+	<script type="text/javascript" src="${cdnPrefix}/public/jquery-qrcode/1.0/jquery.qrcode.min.js"></script>
 
     <script type="text/javascript">
 function utf16to8(str) {  
@@ -117,14 +117,17 @@ function showModal(displayName, mobile, email) {
 	</div>
 
 <div class="modal fade" id="modal">
-  <div class="modal-dialog">
+  <div class="modal-dialog" style="width:400px;">
     <div class="modal-content">
       <div class="modal-header">
+	    扫描二维码
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="modal-body text-center">
         <div id="qr"></div>
       </div>
+	  <div class="modal-footer">
+	  </div>
     </div><!-- /.modal-content -->
   </div><!-- /.modal-dialog -->
 </div><!-- /.modal -->
